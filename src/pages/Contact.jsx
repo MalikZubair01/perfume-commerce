@@ -19,13 +19,15 @@ const validators = {
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
         ? "Enter a valid email address."
         : "",
-  mobile: (v) =>
-    !v.trim()
-      ? "Mobile number is required."
-      : !/^[\d\s\+\-\(\)]{7,15}$/.test(v)
-        ? "Enter a valid mobile number."
-        : "",
-  address: (v) => (!v.trim() ? "Address is required." : ""),
+    mobile: (v) =>
+  !v.trim()
+    ? "Mobile number is required."
+    : !/^(\+92|0)?3\d{9}$/.test(v.replace(/\s/g, ""))
+      ? "Enter a valid Pakistani mobile number."
+      : "",
+  
+  
+        address: (v) => (!v.trim() ? "Address is required." : ""),
   message: (v) =>
     !v.trim()
       ? "Message is required."

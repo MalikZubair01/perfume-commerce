@@ -74,6 +74,7 @@ function Products() {
           className="text-clamp-label uppercase tracking-[0.5em] text-gold text-center"
         >
           Our Collection
+          
         </motion.p>
 
         <motion.h2
