@@ -2,16 +2,22 @@
 
 const links = {
   Explore: ["Home", "About", "Products", "Testimonials", "Contact"],
-  Support: ["FAQs", "Shipping Policy", "Return Policy", "Track Order", "Privacy Policy"],
+  Support: [
+    "FAQs",
+    "Shipping Policy",
+    "Return Policy",
+    "Track Order",
+    "Privacy Policy",
+  ],
 };
 
 const socials = [
-//   { Icon: Instagr, href: "#" },
-//   { Icon: Facebook, href: "#" },
-//   { Icon: Twitter, href: "#" },
-//   { Icon: Youtube, href: "#" },
-// ];
-]
+  //   { Icon: Instagr, href: "#" },
+  //   { Icon: Facebook, href: "#" },
+  //   { Icon: Twitter, href: "#" },
+  //   { Icon: Youtube, href: "#" },
+  // ];
+];
 function Footer() {
   const scrollTo = (item) => {
     const slug = item.toLowerCase().replace(/\s+/g, "-");
@@ -40,15 +46,15 @@ function Footer() {
               world's finest scents to Pakistan since 2014.
             </p>
             <div className="mt-6 flex gap-3">
-            {socials.map(({ Icon, href }, i) => (
-  <a
-    key={i}
-    href={href}
-    className="w-9 h-9 rounded-full border border-gold/25 flex items-center justify-center text-gold/70 hover:text-gold hover:border-gold hover:bg-gold/10 transition-all duration-200"
-  >
-    <Icon size={18} />
-  </a>
-))}
+              {socials.map(({ Icon, href }, i) => (
+                <a
+                  key={i}
+                  href={href}
+                  className="w-9 h-9 rounded-full border border-gold/25 flex items-center justify-center text-gold/70 hover:text-gold hover:border-gold hover:bg-gold/10 transition-all duration-200"
+                >
+                  <Icon size={18} />
+                </a>
+              ))}
             </div>
           </div>
 
@@ -74,13 +80,19 @@ function Footer() {
           ))}
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom bar.... */}
         <div className="mt-12 border-t border-gold/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-clamp-label text-zinc-600 text-center sm:text-left">
             © 2025 N&K Fragrances. All rights reserved.
           </p>
           <p className="text-clamp-label text-zinc-600">
-           Devloped by <a href="https://github.com/MalikZubair01" target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold/80">
+            Devloped by{" "}
+            <a
+              href="https://github.com/MalikZubair01"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gold hover:text-gold/80"
+            >
               Malik Zubair
             </a>
           </p>
