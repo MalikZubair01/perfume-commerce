@@ -1,14 +1,9 @@
 // import { Instagram, Facebook, Twitter, Youtube } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const links = {
   Explore: ["Home", "About", "Products", "Testimonials", "Contact"],
-  Support: [
-    "FAQs",
-    "Shipping Policy",
-    "Return Policy",
-    "Track Order",
-    "Privacy Policy",
-  ],
+  Account: ["Cart", "Checkout"],
 };
 
 const socials = [
@@ -18,9 +13,26 @@ const socials = [
   //   { Icon: Youtube, href: "#" },
   // ];
 ];
+
+const ROUTE_LINKS = { Cart: "/cart", Checkout: "/checkout" };
+
 function Footer() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const scrollTo = (item) => {
+    if (ROUTE_LINKS[item]) {
+      navigate(ROUTE_LINKS[item]);
+      return;
+    }
     const slug = item.toLowerCase().replace(/\s+/g, "-");
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        document.getElementById(slug)?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+      return;
+    }
     const el = document.getElementById(slug);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };

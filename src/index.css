@@ -62,3 +62,29 @@ body {
 .input-gold.error {
   border-color: #ef4444;
 }
+
+/* Swiper theming for product thumbnails */
+.product-thumbs .swiper-slide {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+.product-thumbs .swiper-slide-thumb-active {
+  opacity: 1;
+}
+.product-thumbs .swiper-button-next,
+.product-thumbs .swiper-button-prev {
+  color: #b8952a;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 9999px;
+}
+.product-thumbs .swiper-button-next::after,
+.product-thumbs .swiper-button-prev::after {
+  font-size: 12px;
+}
+
+/* Hide scrollbar on order summary item list while keeping scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

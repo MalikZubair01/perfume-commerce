@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 
 const navItems = [
   { id: "home", label: "Home" },
@@ -14,17 +16,29 @@ function Navbar() {
   const [active, setActive] = useState("home");
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { itemCount } = useCart();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isHome = location.pathname === "/";
 
   const scrollToSection = (id) => {
-    const section = document.getElementById(id);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!isHome) {
+      navigate("/");
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    } else {
+      const section = document.getElementById(id);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
     setActive(id);
     setOpen(false);
   };
 
   useEffect(() => {
+    if (!isHome) return;
     const onScroll = () => {
       setScrolled(window.scrollY > 40);
       let maxVisible = 0;
@@ -46,7 +60,11 @@ function Navbar() {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isHome]);
+
+  useEffect(() => {
+    if (!isHome) setScrolled(true);
+  }, [isHome]);
 
   return (
     <nav
@@ -72,13 +90,13 @@ function Navbar() {
               key={item.id}
               onClick={() => scrollToSection(item.id)}
               className={`relative text-clamp-label font-medium uppercase tracking-widest transition-all duration-300 ${
-                active === item.id
+                isHome && active === item.id
                   ? "text-gold"
                   : "text-zinc-300 hover:text-gold"
               }`}
             >
               {item.label}
-              {active === item.id && (
+              {isHome && active === item.id && (
                 <motion.span
                   layoutId="nav-underline"
                   className="absolute -bottom-1 left-0 h-[2px] w-full bg-gold"
@@ -88,9 +106,24 @@ function Navbar() {
           ))}
         </div>
 
-        <button onClick={() => setOpen(!open)} className="text-gold md:hidden">
-          {open ? <X size={28} /> : <Menu size={28} />}
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/cart"
+            className="relative text-gold hover:text-goldLight transition-colors duration-200"
+            aria-label="View cart"
+          >
+            <ShoppingBag size={24} />
+            {itemCount > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-black">
+                {itemCount}
+              </span>
+            )}
+          </Link>
+
+          <button onClick={() => setOpen(!open)} className="text-gold md:hidden">
+            {open ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -107,7 +140,7 @@ function Navbar() {
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
                 className={`block w-full border-b border-gold/10 px-6 py-4 text-left text-xs font-medium uppercase tracking-widest transition-all duration-300 ${
-                  active === item.id
+                  isHome && active === item.id
                     ? "bg-gold/10 text-gold"
                     : "text-zinc-300 hover:bg-gold/5 hover:text-gold"
                 }`}
