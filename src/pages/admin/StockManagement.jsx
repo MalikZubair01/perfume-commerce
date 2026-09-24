@@ -1,12 +1,5 @@
-import { useMemo, useState } from "react";
-import {
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  Minus,
-  RotateCcw,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Search, Pencil, Trash2, Minus, Loader2 } from "lucide-react";
 import AdminLayout from "./layout/AdminLayout";
 import ProductFormModal from "../../components/admin/ProductFormModal";
 import ConfirmDialog from "../../components/admin/ConfirmDialog";
@@ -17,7 +10,6 @@ import {
   updateProduct,
   deleteProduct,
   adjustStock,
-  resetToDefaults,
   LOW_STOCK_LIMIT,
 } from "../../utils/adminStore";
 import { formatPKR } from "../../data/products";
@@ -38,21 +30,37 @@ const statusStyles = {
 
 function StockManagement() {
   const { showToast } = useToast();
-  const [products, setProducts] = useState(() => getAllProducts());
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+
+  const loadProducts = async () => {
+    try {
+      const list = await getAllProducts();
+      setProducts(list);
+    } catch (err) {
+      showToast(err.message || "Could not load products", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const matchesSearch =
         !search.trim() ||
         p.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-        p.type.toLowerCase().includes(search.trim().toLowerCase());
+        (p.type || "").toLowerCase().includes(search.trim().toLowerCase());
       const matchesStatus =
         statusFilter === "All" || getStatus(p.stock) === statusFilter;
       return matchesSearch && matchesStatus;
@@ -70,39 +78,43 @@ function StockManagement() {
   };
 
   const handleFormSubmit = async (payload) => {
-    if (editingProduct) {
-      updateProduct(editingProduct.id, payload);
-      showToast(`${payload.name} updated`);
-    } else {
-      addProduct(payload);
-      showToast(`${payload.name} added to catalogue`);
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct._id, payload);
+        showToast(`${payload.name} updated`);
+      } else {
+        await addProduct(payload);
+        showToast(`${payload.name} added to catalogue`);
+      }
+      await loadProducts();
+      setFormOpen(false);
+      setEditingProduct(null);
+    } catch (err) {
+      showToast(err.message || "Could not save product", "error");
     }
-    setProducts(getAllProducts());
-    setFormOpen(false);
-    setEditingProduct(null);
   };
 
-  const handleQuickStock = (id, delta) => {
-    const updated = adjustStock(id, delta);
-    setProducts(getAllProducts());
-    if (updated) {
+  const handleQuickStock = async (product, delta) => {
+    try {
+      const updated = await adjustStock(product._id, delta);
+      setProducts((prev) => prev.map((p) => (p._id === product._id ? { ...p, ...updated } : p)));
       showToast(`${updated.name} stock: ${updated.stock}`);
+    } catch (err) {
+      showToast(err.message || "Could not update stock", "error");
     }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    deleteProduct(deleteTarget.id);
-    setProducts(getAllProducts());
-    showToast(`${deleteTarget.name} removed`);
-    setDeleteTarget(null);
-  };
-
-  const handleResetConfirm = () => {
-    resetToDefaults();
-    setProducts(getAllProducts());
-    showToast("Catalogue reset to defaults");
-    setResetConfirmOpen(false);
+    try {
+      await deleteProduct(deleteTarget._id);
+      showToast(`${deleteTarget.name} removed`);
+      await loadProducts();
+    } catch (err) {
+      showToast(err.message || "Could not delete product", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   return (
@@ -145,14 +157,6 @@ function StockManagement() {
 
         <div className="flex shrink-0 gap-3">
           <button
-            onClick={() => setResetConfirmOpen(true)}
-            className="flex items-center gap-2 rounded-full border border-gold/20 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-zinc-400 transition-all duration-200 hover:border-gold/50 hover:text-white"
-            title="Reset catalogue to default demo data"
-          >
-            <RotateCcw size={15} />
-            Reset
-          </button>
-          <button
             onClick={openAddModal}
             className="flex items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-black transition-all duration-300 hover:bg-goldLight"
           >
@@ -176,7 +180,13 @@ function StockManagement() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-14 text-center text-zinc-500">
+                    <Loader2 size={20} className="mx-auto animate-spin" />
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-14 text-center text-zinc-500">
                     No products match your filters.
@@ -187,7 +197,7 @@ function StockManagement() {
                   const status = getStatus(p.stock);
                   return (
                     <tr
-                      key={p.id}
+                      key={p._id || p.id}
                       className="border-b border-gold/10 last:border-0 hover:bg-white/[0.02]"
                     >
                       <td className="px-6 py-4">
@@ -207,7 +217,7 @@ function StockManagement() {
                               {p.name}
                             </p>
                             <p className="truncate text-[12px] text-zinc-500">
-                              {p.type}
+                              {p.categoryName || p.type}
                             </p>
                           </div>
                         </div>
@@ -218,7 +228,7 @@ function StockManagement() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleQuickStock(p.id, -1)}
+                            onClick={() => handleQuickStock(p, -1)}
                             disabled={p.stock <= 0}
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-gold/20 text-zinc-300 hover:border-gold/50 hover:text-white disabled:opacity-30"
                             aria-label="Decrease stock"
@@ -229,7 +239,7 @@ function StockManagement() {
                             {p.stock}
                           </span>
                           <button
-                            onClick={() => handleQuickStock(p.id, 1)}
+                            onClick={() => handleQuickStock(p, 1)}
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-gold/20 text-zinc-300 hover:border-gold/50 hover:text-white"
                             aria-label="Increase stock"
                           >
@@ -292,15 +302,6 @@ function StockManagement() {
         confirmLabel="Delete"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
-      />
-
-      <ConfirmDialog
-        open={resetConfirmOpen}
-        title="Reset catalogue?"
-        message="This will discard all admin changes and restore the original demo product list."
-        confirmLabel="Reset"
-        onConfirm={handleResetConfirm}
-        onCancel={() => setResetConfirmOpen(false)}
       />
     </AdminLayout>
   );

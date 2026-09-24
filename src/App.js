@@ -20,6 +20,8 @@ import AdminSignup from "./pages/admin/AdminSignup";
 import AdminForgotPassword from "./pages/admin/AdminForgotPassword";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStockManagement from "./pages/admin/StockManagement";
+import AdminOrderManagement from "./pages/admin/OrderManagement";
+import AdminCategoryManagement from "./pages/admin/CategoryManagement";
 
 function AppContent() {
   const location = useLocation();
@@ -69,6 +71,22 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <AdminStockManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <ProtectedRoute>
+                <AdminOrderManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories"
+            element={
+              <ProtectedRoute>
+                <AdminCategoryManagement />
               </ProtectedRoute>
             }
           />

@@ -1,11 +1,13 @@
+import { useEffect, useState } from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, Save } from "lucide-react";
+import { X, Loader2, Save, ImagePlus, Trash2 } from "lucide-react";
+import { getCategories } from "../../utils/adminStore";
 
 const ProductSchema = Yup.object().shape({
   name: Yup.string().trim().required("Product name is required."),
-  type: Yup.string().trim().required("Category / type is required."),
+  category: Yup.string().required("Category is required."),
   price: Yup.number()
     .typeError("Price must be a number.")
     .positive("Price must be greater than 0.")
@@ -17,7 +19,6 @@ const ProductSchema = Yup.object().shape({
   badge: Yup.string(),
   sizes: Yup.string(),
   desc: Yup.string().trim().required("A short description is required."),
-  image: Yup.string(),
   noteTop: Yup.string(),
   noteHeart: Yup.string(),
   noteBase: Yup.string(),
@@ -41,12 +42,12 @@ function productToInitialValues(product) {
     return {
       name: "",
       type: "",
+      category: "",
       price: "",
       stock: "",
       badge: "",
       sizes: "30ml, 50ml, 100ml",
       desc: "",
-      image: "",
       noteTop: "",
       noteHeart: "",
       noteBase: "",
@@ -55,12 +56,12 @@ function productToInitialValues(product) {
   return {
     name: product.name || "",
     type: product.type || "",
+    category: product.categoryId || "",
     price: product.price ?? "",
     stock: product.stock ?? "",
     badge: product.badge || "",
     sizes: (product.sizes || []).join(", "),
     desc: product.desc || "",
-    image: product.images?.[0] || "",
     noteTop: product.notes?.top || "",
     noteHeart: product.notes?.heart || "",
     noteBase: product.notes?.base || "",
@@ -69,6 +70,45 @@ function productToInitialValues(product) {
 
 function ProductFormModal({ open, product, onClose, onSubmit }) {
   const isEdit = !!product;
+
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // existing Cloudinary images (edit mode) — each can be marked for removal
+  const [existingImages, setExistingImages] = useState([]);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
+
+  // newly picked files (not uploaded yet — uploaded on submit)
+  const [newFiles, setNewFiles] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setCategoriesLoading(true);
+    getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoading(false));
+
+    setExistingImages(product?.imageObjects || []);
+    setRemovedImageIds([]);
+    setNewFiles([]);
+  }, [open, product]);
+
+  const handleFilesPicked = (e) => {
+    const files = Array.from(e.target.files || []);
+    setNewFiles((prev) => [...prev, ...files]);
+    e.target.value = ""; // allow picking the same file again if removed
+  };
+
+  const removeNewFile = (index) => {
+    setNewFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleRemoveExisting = (publicId) => {
+    setRemovedImageIds((prev) =>
+      prev.includes(publicId) ? prev.filter((id) => id !== publicId) : [...prev, publicId]
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -109,6 +149,7 @@ function ProductFormModal({ open, product, onClose, onSubmit }) {
                 const payload = {
                   name: values.name,
                   type: values.type,
+                  category: values.category, // category _id, selected below
                   price: values.price,
                   stock: values.stock,
                   badge: values.badge,
@@ -117,18 +158,19 @@ function ProductFormModal({ open, product, onClose, onSubmit }) {
                     .map((s) => s.trim())
                     .filter(Boolean),
                   desc: values.desc,
-                  images: values.image ? [values.image] : undefined,
                   notes: {
                     top: values.noteTop,
                     heart: values.noteHeart,
                     base: values.noteBase,
                   },
+                  imageFiles: newFiles, // uploaded to Cloudinary by the backend
+                  removeImageIds: removedImageIds, // existing Cloudinary images to delete
                 };
                 await onSubmit(payload);
                 setSubmitting(false);
               }}
             >
-              {({ isSubmitting, touched, errors }) => (
+              {({ isSubmitting, touched, errors, values, setFieldValue }) => (
                 <Form className="flex flex-col gap-5" noValidate>
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
@@ -145,14 +187,35 @@ function ProductFormModal({ open, product, onClose, onSubmit }) {
 
                     <div>
                       <label className="mb-2 block text-clamp-label uppercase tracking-widest text-zinc-400">
-                        Category / Type
+                        Category
+                      </label>
+                      <Field
+                        as="select"
+                        name="category"
+                        className={fieldClass(touched.category, errors.category)}
+                        disabled={categoriesLoading}
+                      >
+                        <option value="">
+                          {categoriesLoading ? "Loading categories..." : "Select a category"}
+                        </option>
+                        {categories.map((c) => (
+                          <option key={c._id} value={c._id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </Field>
+                      <FieldErrorText name="category" />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-clamp-label uppercase tracking-widest text-zinc-400">
+                        Type label <span className="text-zinc-600">(optional, shown on card)</span>
                       </label>
                       <Field
                         name="type"
                         placeholder="Luxury Perfume"
                         className={fieldClass(touched.type, errors.type)}
                       />
-                      <FieldErrorText name="type" />
                     </div>
 
                     <div>
@@ -204,15 +267,76 @@ function ProductFormModal({ open, product, onClose, onSubmit }) {
                     </div>
                   </div>
 
+                  {/* Images — Cloudinary upload */}
                   <div>
                     <label className="mb-2 block text-clamp-label uppercase tracking-widest text-zinc-400">
-                      Image URL <span className="text-zinc-600">(optional)</span>
+                      Product Images
                     </label>
-                    <Field
-                      name="image"
-                      placeholder="/images/products/royal-oud-1.jpg"
-                      className={fieldClass(touched.image, errors.image)}
-                    />
+
+                    {existingImages.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-3">
+                        {existingImages.map((img) => (
+                          <div
+                            key={img.public_id}
+                            className={`relative h-20 w-20 overflow-hidden rounded-lg border ${
+                              removedImageIds.includes(img.public_id)
+                                ? "border-red-500/60 opacity-40"
+                                : "border-gold/20"
+                            }`}
+                          >
+                            <img src={img.url} alt="" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => toggleRemoveExisting(img.public_id)}
+                              className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/70 py-1 text-[10px] text-white"
+                            >
+                              <Trash2 size={11} />
+                              {removedImageIds.includes(img.public_id) ? "Undo" : "Remove"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {newFiles.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-3">
+                        {newFiles.map((file, i) => (
+                          <div
+                            key={`${file.name}-${i}`}
+                            className="relative h-20 w-20 overflow-hidden rounded-lg border border-gold/40"
+                          >
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeNewFile(i)}
+                              className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/70 py-1 text-[10px] text-white"
+                            >
+                              <Trash2 size={11} />
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gold/30 px-4 py-2.5 text-xs font-medium text-zinc-400 hover:border-gold/60 hover:text-gold">
+                      <ImagePlus size={15} />
+                      Add images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFilesPicked}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="mt-1 text-[11px] text-zinc-600">
+                      Uploaded to Cloudinary when you save. Up to 5MB per image.
+                    </p>
                   </div>
 
                   <div>

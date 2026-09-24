@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Smartphone, Truck, CheckCircle2, Loader2 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { formatPKR } from "../../data/products";
+import { createOrder } from "../../api/orders.api";
+import { useToast } from "../../components/ToastProvider";
 
 const DELIVERY_CHARGE = 250;
 const FREE_DELIVERY_THRESHOLD = 5000;
@@ -47,7 +49,10 @@ function FieldErrorText({ name }) {
 
 function Checkout() {
   const { items, itemCount, subtotal, clearCart } = useCart();
+  const { showToast } = useToast();
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [submitError, setSubmitError] = useState("");
 
   const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
   const total = subtotal + delivery;
@@ -87,6 +92,11 @@ function Checkout() {
         <p className="mt-3 text-zinc-400 max-w-md">
           Thank you for your purchase. We've received your order and will reach out shortly to confirm delivery details.
         </p>
+        {placedOrder?.orderNumber && (
+          <p className="mt-4 rounded-full border border-gold/30 bg-gold/10 px-5 py-2 text-sm text-gold">
+            Order Number: <span className="font-semibold">{placedOrder.orderNumber}</span>
+          </p>
+        )}
         <Link
           to="/"
           className="mt-8 px-8 py-3 bg-gold text-black font-semibold text-sm uppercase tracking-widest rounded-full hover:bg-goldLight transition-all duration-300"
@@ -125,11 +135,35 @@ function Checkout() {
           }}
           validationSchema={CheckoutSchema}
           onSubmit={async (values, { setSubmitting }) => {
-            // Simulate order placement (no backend wired up yet).
-            await new Promise((res) => setTimeout(res, 1200));
-            setSubmitting(false);
-            setOrderPlaced(true);
-            clearCart();
+            setSubmitError("");
+            try {
+              const order = await createOrder({
+                customer: {
+                  fullName: values.fullName,
+                  mobile: values.mobile,
+                  email: values.email,
+                  address: values.address,
+                  city: values.city,
+                  postalCode: values.postalCode,
+                  notes: values.notes,
+                },
+                items: items.map((i) => ({
+                  productId: i.id, // product slug, resolved server-side
+                  size: i.size,
+                  quantity: i.quantity,
+                })),
+                paymentMethod: values.paymentMethod,
+              });
+
+              setPlacedOrder(order);
+              setOrderPlaced(true);
+              clearCart();
+            } catch (err) {
+              setSubmitError(err.message || "Could not place order. Please try again.");
+              showToast(err.message || "Could not place order", "error");
+            } finally {
+              setSubmitting(false);
+            }
           }}
         >
           {({ values, touched, errors, isSubmitting, setFieldValue }) => (
@@ -365,6 +399,10 @@ function Checkout() {
                       "Place Order"
                     )}
                   </button>
+
+                  {submitError && (
+                    <p className="mt-3 text-center text-[12px] text-red-400">{submitError}</p>
+                  )}
                 </div>
               </div>
             </Form>

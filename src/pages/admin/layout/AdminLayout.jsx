@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   Boxes,
+  ShoppingBag,
+  Tags,
   LogOut,
   Menu,
   ShieldCheck,
@@ -14,6 +16,8 @@ import { useAdminAuth } from "../../../context/AdminAuthContext";
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/stock", label: "Stock & Products", icon: Boxes },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
+  { to: "/admin/categories", label: "Categories", icon: Tags },
 ];
 
 function SidebarContent({ onNavigate }) {

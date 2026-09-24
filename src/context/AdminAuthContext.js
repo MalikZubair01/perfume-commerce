@@ -1,138 +1,98 @@
 // Admin auth context.
 //
-// No backend is wired up yet, so this simulates auth entirely in
-// localStorage: a list of registered admin accounts + a "session" key.
-// Swap login/signup/requestPasswordReset/resetPassword for real API calls
-// once the backend is ready — the shape returned to consumers (admin,
-// isAuthenticated, loading helpers) is designed to stay the same.
+// Now wired to the real backend (src/api/auth.api.js) instead of
+// localStorage simulation. The shape returned to consumers (admin,
+// isAuthenticated, loading, login, signup, logout, requestPasswordReset,
+// resetPassword) is unchanged, so no page/component needs to change.
+//
+// NOTE on resetPassword: the backend uses a one-time reset TOKEN (emailed/
+// logged as a link, not the account email) — see requestPasswordReset below.
+// resetPassword(token, newPassword) takes that token, not the email.
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-const ADMINS_KEY = "nk_admin_users_v1";
-const SESSION_KEY = "nk_admin_session_v1";
-
-const DEFAULT_ADMIN = {
-  name: "Store Admin",
-  email: "admin@nkfragrances.com",
-  password: "Admin@123",
-};
+import {
+  loginApi,
+  signupApi,
+  forgotPasswordApi,
+  resetPasswordApi,
+  getMeApi,
+  logoutApi,
+  getPersistedAdmin,
+} from "../api/auth.api";
+import { getStoredToken } from "../api/axiosInstance";
 
 const AdminAuthContext = createContext(null);
 
-const readAdmins = () => {
-  try {
-    const raw = localStorage.getItem(ADMINS_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(parsed) && parsed.length) return parsed;
-  } catch (err) {
-    console.warn("Could not read admin accounts:", err);
-  }
-  const seeded = [DEFAULT_ADMIN];
-  localStorage.setItem(ADMINS_KEY, JSON.stringify(seeded));
-  return seeded;
-};
-
-const writeAdmins = (list) => {
-  try {
-    localStorage.setItem(ADMINS_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.warn("Could not persist admin accounts:", err);
-  }
-};
-
-const readSession = () => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
 export function AdminAuthProvider({ children }) {
-  const [admin, setAdmin] = useState(() => readSession());
-  const [loading, setLoading] = useState(false);
+  const [admin, setAdmin] = useState(() => getPersistedAdmin());
+  const [loading, setLoading] = useState(true);
 
+  // On first load, if a token exists, verify it's still valid against the
+  // backend (covers the case where it expired since the last visit).
   useEffect(() => {
-    // Seed the default admin account on first load so login works
-    // out of the box for demoing the UI.
-    readAdmins();
+    const verifySession = async () => {
+      const token = getStoredToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const freshAdmin = await getMeApi();
+        setAdmin(freshAdmin);
+      } catch {
+        // interceptor already clears the stale session on 401
+        setAdmin(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    verifySession();
   }, []);
 
   const login = async (email, password) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 450)); // simulate network latency
-    const admins = readAdmins();
-    const found = admins.find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-    );
-    setLoading(false);
-
-    if (!found || found.password !== password) {
-      throw new Error("Invalid email or password.");
+    try {
+      const loggedInAdmin = await loginApi(email, password);
+      setAdmin(loggedInAdmin);
+      return loggedInAdmin;
+    } finally {
+      setLoading(false);
     }
-
-    const session = { name: found.name, email: found.email };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setAdmin(session);
-    return session;
   };
 
   const signup = async ({ name, email, password }) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const admins = readAdmins();
-    const exists = admins.some(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-    );
-
-    if (exists) {
+    try {
+      const newAdmin = await signupApi({ name, email, password });
+      setAdmin(newAdmin);
+      return newAdmin;
+    } finally {
       setLoading(false);
-      throw new Error("An admin account with this email already exists.");
     }
-
-    const newAdmin = { name: name.trim(), email: email.trim(), password };
-    const updated = [...admins, newAdmin];
-    writeAdmins(updated);
-    setLoading(false);
-    return newAdmin;
   };
 
+  // Returns { success, message, resetUrl? } — resetUrl only present in dev
   const requestPasswordReset = async (email) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const admins = readAdmins();
-    const found = admins.find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-    );
-    setLoading(false);
-    if (!found) {
-      throw new Error("No admin account found with this email.");
+    try {
+      return await forgotPasswordApi(email);
+    } finally {
+      setLoading(false);
     }
-    return true;
   };
 
-  const resetPassword = async (email, newPassword) => {
+  // token comes from the reset link (/admin/reset-password/:token)
+  const resetPassword = async (token, newPassword) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const admins = readAdmins();
-    const idx = admins.findIndex(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-    );
-
-    if (idx === -1) {
+    try {
+      return await resetPasswordApi(token, newPassword);
+    } finally {
       setLoading(false);
-      throw new Error("No admin account found with this email.");
     }
-
-    admins[idx] = { ...admins[idx], password: newPassword };
-    writeAdmins(admins);
-    setLoading(false);
-    return true;
   };
 
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
+    logoutApi();
     setAdmin(null);
   };
 
@@ -152,9 +112,7 @@ export function AdminAuthProvider({ children }) {
   );
 
   return (
-    <AdminAuthContext.Provider value={value}>
-      {children}
-    </AdminAuthContext.Provider>
+    <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>
   );
 }
 

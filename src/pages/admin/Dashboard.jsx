@@ -8,6 +8,7 @@ import {
   Wallet,
   Star,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import AdminLayout from "./layout/AdminLayout";
 import StatCard from "../../components/admin/StatCard";
@@ -15,13 +16,42 @@ import { getStats, LOW_STOCK_LIMIT } from "../../utils/adminStore";
 import { formatPKR } from "../../data/products";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 
+const EMPTY_STATS = {
+  totalProducts: 0,
+  totalStockUnits: 0,
+  lowStockCount: 0,
+  outOfStockCount: 0,
+  inventoryValue: 0,
+  avgRating: 0,
+  lowStockItems: [],
+  outOfStockItems: [],
+};
+
 function Dashboard() {
   const { admin } = useAdminAuth();
-  const [stats, setStats] = useState(() => getStats());
+  const [stats, setStats] = useState(EMPTY_STATS);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setStats(getStats());
+    let active = true;
+    getStats()
+      .then((data) => active && setStats(data))
+      .catch(() => active && setStats(EMPTY_STATS))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
   }, []);
+
+  if (loading) {
+    return (
+      <AdminLayout title="Dashboard" subtitle="Loading store overview...">
+        <div className="flex justify-center py-20">
+          <Loader2 size={24} className="animate-spin text-gold" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout

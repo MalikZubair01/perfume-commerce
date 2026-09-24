@@ -36,6 +36,7 @@ function AdminForgotPassword() {
   const { requestPasswordReset, resetPassword } = useAdminAuth();
   const [step, setStep] = useState("request"); // request -> reset -> done
   const [email, setEmail] = useState("");
+  const [resetToken, setResetToken] = useState(""); // dev-only: extracted from backend's resetUrl
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -73,7 +74,7 @@ function AdminForgotPassword() {
           onSubmit={async (values, { setSubmitting }) => {
             setFormError("");
             try {
-              await resetPassword(email, values.password);
+              await resetPassword(resetToken, values.password);
               setStep("done");
             } catch (err) {
               setFormError(err.message || "Something went wrong. Please try again.");
@@ -167,7 +168,14 @@ function AdminForgotPassword() {
         onSubmit={async (values, { setSubmitting }) => {
           setFormError("");
           try {
-            await requestPasswordReset(values.email);
+            const res = await requestPasswordReset(values.email);
+            // Dev-only convenience: backend returns resetUrl only when
+            // NODE_ENV !== "production". In production, remove this inline
+            // step entirely and have the admin click the emailed link
+            // instead (which should land on a /admin/reset-password/:token
+            // route reading the token from the URL).
+            const token = res?.resetUrl?.split("/").pop() || "";
+            setResetToken(token);
             setEmail(values.email);
             setStep("reset");
           } catch (err) {

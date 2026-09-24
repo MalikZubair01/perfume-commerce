@@ -6,8 +6,9 @@ import { Navigation, Thumbs } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/thumbs";
-import { ChevronLeft, ShoppingBag, Star, CheckCircle2, XCircle } from "lucide-react";
-import { getProductById, getRelatedProducts, formatPKR } from "../../data/products";
+import { ChevronLeft, ShoppingBag, Star, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { getProductBySlug } from "../../api/products.api";
+import { formatPKR } from "../../data/products";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../components/ToastProvider";
 import QuantitySelector from "../../components/QuantitySelector";
@@ -24,25 +25,55 @@ const cardVariants = {
 };
 
 function ProductDetails() {
-  const { id } = useParams();
+  const { id } = useParams(); // product slug
   const navigate = useNavigate();
-  const product = getProductById(id);
   const { addToCart } = useCart();
   const { showToast } = useToast();
 
+  const [product, setProduct] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
-  const [size, setSize] = useState(product?.sizes?.[0] || null);
+  const [size, setSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    setSize(product?.sizes?.[0] || null);
-    setQuantity(1);
-    setActiveImage(0);
-  }, [id, product]);
+    let active = true;
+    setLoading(true);
+    setNotFound(false);
 
-  if (!product) {
+    getProductBySlug(id)
+      .then((res) => {
+        if (!active) return;
+        setProduct(res.product);
+        setRelated(res.related);
+        setSize(res.product?.sizes?.[0] || null);
+        setQuantity(1);
+        setActiveImage(0);
+      })
+      .catch(() => {
+        if (active) setNotFound(true);
+      })
+      .finally(() => active && setLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <section className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-gold" />
+      </section>
+    );
+  }
+
+  if (notFound || !product) {
     return (
       <section className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
         <h2 className="font-prim text-3xl font-bold text-white">
@@ -63,7 +94,6 @@ function ProductDetails() {
 
   const outOfStock = product.stock <= 0;
   const lowStock = product.stock > 0 && product.stock <= 10;
-  const related = getRelatedProducts(product.id, 3);
 
   const handleAddToCart = () => {
     if (outOfStock) return;
@@ -94,38 +124,40 @@ function ProductDetails() {
               alt={`${product.name} — image ${activeImage + 1}`}
             />
 
-            <Swiper
-              modules={[Navigation, Thumbs]}
-              onSwiper={setThumbsSwiper}
-              watchSlidesProgress
-              navigation
-              spaceBetween={12}
-              slidesPerView={4}
-              className="mt-4 product-thumbs"
-              onSlideChange={(swiper) => setActiveImage(swiper.activeIndex)}
-            >
-              {product.images.map((src, i) => (
-                <SwiperSlide key={src}>
-                  <button
-                    onClick={() => {
-                      setActiveImage(i);
-                      thumbsSwiper?.slideTo(i);
-                    }}
-                    className={`block w-full aspect-square overflow-hidden rounded-xl border transition-colors duration-200 ${
-                      activeImage === i
-                        ? "border-gold"
-                        : "border-gold/15 hover:border-gold/50"
-                    }`}
-                  >
-                    <img
-                      src={src}
-                      alt={`${product.name} thumbnail ${i + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            {product.images.length > 1 && (
+              <Swiper
+                modules={[Navigation, Thumbs]}
+                onSwiper={setThumbsSwiper}
+                watchSlidesProgress
+                navigation
+                spaceBetween={12}
+                slidesPerView={4}
+                className="mt-4 product-thumbs"
+                onSlideChange={(swiper) => setActiveImage(swiper.activeIndex)}
+              >
+                {product.images.map((src, i) => (
+                  <SwiperSlide key={src}>
+                    <button
+                      onClick={() => {
+                        setActiveImage(i);
+                        thumbsSwiper?.slideTo(i);
+                      }}
+                      className={`block w-full aspect-square overflow-hidden rounded-xl border transition-colors duration-200 ${
+                        activeImage === i
+                          ? "border-gold"
+                          : "border-gold/15 hover:border-gold/50"
+                      }`}
+                    >
+                      <img
+                        src={src}
+                        alt={`${product.name} thumbnail ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            )}
           </motion.div>
 
           {/* Info */}
@@ -141,7 +173,7 @@ function ProductDetails() {
             )}
 
             <p className="text-clamp-label uppercase tracking-widest text-gold">
-              {product.type}
+              {product.categoryName || product.type}
             </p>
             <h1 className="font-prim text-clamp-section font-bold text-white mt-2">
               {product.name}
@@ -178,7 +210,7 @@ function ProductDetails() {
 
             {/* Fragrance notes */}
             <div className="mt-6 grid grid-cols-3 gap-3">
-              {Object.entries(product.notes).map(([key, val]) => (
+              {Object.entries(product.notes || {}).map(([key, val]) => (
                 <div
                   key={key}
                   className="rounded-xl border border-gold/15 bg-[#111] p-3 text-center"

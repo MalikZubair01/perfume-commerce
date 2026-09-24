@@ -1,173 +1,79 @@
 // Admin stock/product store.
 //
-// There's no backend wired up yet, so this persists everything to
-// localStorage and seeds itself from the public catalogue in
-// src/data/products.js the first time it runs. Every admin CRUD screen
-// (Dashboard, Stock Management) reads/writes through the functions below.
+// Now backed by the real API (src/api/products.api.js, categories.api.js)
+// instead of localStorage. Every function here is now ASYNC — call sites
+// (Dashboard, Stock Management, ProductFormModal) must `await` them.
 //
-// When the real backend is ready, swap the bodies of these functions for
-// fetch()/axios calls — the function signatures are designed to map
-// cleanly onto typical REST endpoints (GET/POST/PUT/DELETE /api/products).
+// Function names are kept the same as the old mock version so the rest of
+// the admin UI barely changed — just added `await` and loading states.
 
-import { products as seedProducts } from "../data/products";
+import * as productsApi from "../api/products.api";
+import * as categoriesApi from "../api/categories.api";
 
-const PRODUCTS_KEY = "nk_admin_products_v1";
 const LOW_STOCK_THRESHOLD = 10;
+export const LOW_STOCK_LIMIT = LOW_STOCK_THRESHOLD;
 
-const clone = (v) => JSON.parse(JSON.stringify(v));
+// Admin screens want the *whole* catalogue (they do their own client-side
+// search/filter/pagination in the table), so ask the backend for a high
+// limit rather than building a separate admin pagination UI right now.
+const ADMIN_LIST_LIMIT = 500;
 
-const slugify = (name) =>
-  name
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-
-const readRaw = () => {
-  try {
-    const raw = localStorage.getItem(PRODUCTS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    console.warn("Could not read admin product store:", err);
-    return null;
-  }
+export const getAllProducts = async () => {
+  const { products } = await productsApi.getProducts({ limit: ADMIN_LIST_LIMIT, sort: "newest" });
+  return products;
 };
 
-const writeRaw = (list) => {
-  try {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.warn("Could not persist admin product store:", err);
-  }
+export const getProduct = async (slug) => {
+  const { product } = await productsApi.getProductBySlug(slug);
+  return product;
 };
 
-const seedIfEmpty = () => {
-  const existing = readRaw();
-  if (existing) return existing;
-  const seeded = clone(seedProducts);
-  writeRaw(seeded);
-  return seeded;
+// data: { name, type, category (category _id), price, badge, rating, stock,
+//          sizes (array), desc, notes {top,heart,base}, imageFiles (File[]) }
+export const addProduct = async (data) => {
+  return productsApi.createProduct(data);
 };
 
-export const getAllProducts = () => seedIfEmpty();
-
-export const getProduct = (id) => getAllProducts().find((p) => p.id === id) || null;
-
-export const addProduct = (data) => {
-  const list = getAllProducts();
-
-  let id = slugify(data.name || "product");
-  if (!id) id = `product-${Date.now()}`;
-  let uniqueId = id;
-  let n = 1;
-  while (list.some((p) => p.id === uniqueId)) {
-    n += 1;
-    uniqueId = `${id}-${n}`;
-  }
-
-  const newProduct = {
-    id: uniqueId,
-    name: data.name?.trim() || "Untitled Product",
-    type: data.type?.trim() || "Fragrance",
-    price: Number(data.price) || 0,
-    badge: data.badge?.trim() || null,
-    rating: data.rating ? Number(data.rating) : 4.5,
-    stock: Number.isFinite(Number(data.stock)) ? Number(data.stock) : 0,
-    sizes: data.sizes?.length ? data.sizes : ["30ml", "50ml", "100ml"],
-    images: data.images?.length ? data.images : ["/images/products/placeholder.jpg"],
-    desc: data.desc?.trim() || "",
-    notes: {
-      top: data.notes?.top?.trim() || "",
-      heart: data.notes?.heart?.trim() || "",
-      base: data.notes?.base?.trim() || "",
-    },
-  };
-
-  const updated = [newProduct, ...list];
-  writeRaw(updated);
-  return newProduct;
+// id must be the product's Mongo _id (product._id from the normalized object)
+export const updateProduct = async (id, data) => {
+  return productsApi.updateProduct(id, data);
 };
 
-export const updateProduct = (id, data) => {
-  const list = getAllProducts();
-  let updatedProduct = null;
-
-  const updated = list.map((p) => {
-    if (p.id !== id) return p;
-    updatedProduct = {
-      ...p,
-      name: data.name?.trim() || p.name,
-      type: data.type?.trim() || p.type,
-      price: data.price !== undefined ? Number(data.price) : p.price,
-      badge: data.badge !== undefined ? data.badge?.trim() || null : p.badge,
-      stock: data.stock !== undefined ? Math.max(0, Number(data.stock)) : p.stock,
-      sizes: data.sizes?.length ? data.sizes : p.sizes,
-      images: data.images?.length ? data.images : p.images,
-      desc: data.desc !== undefined ? data.desc : p.desc,
-      notes: {
-        top: data.notes?.top ?? p.notes?.top ?? "",
-        heart: data.notes?.heart ?? p.notes?.heart ?? "",
-        base: data.notes?.base ?? p.notes?.base ?? "",
-      },
-    };
-    return updatedProduct;
-  });
-
-  writeRaw(updated);
-  return updatedProduct;
+// id must be the product's Mongo _id
+export const deleteProduct = async (id) => {
+  await productsApi.deleteProduct(id);
+  return getAllProducts();
 };
 
-export const deleteProduct = (id) => {
-  const list = getAllProducts();
-  const updated = list.filter((p) => p.id !== id);
-  writeRaw(updated);
-  return updated;
+// id must be the product's Mongo _id
+export const adjustStock = async (id, delta) => {
+  return productsApi.adjustStock(id, delta);
 };
 
-export const adjustStock = (id, delta) => {
-  const list = getAllProducts();
-  let updatedProduct = null;
+export const getStats = async () => {
+  const stats = await productsApi.getStats();
+  const { products } = await productsApi.getProducts({ limit: ADMIN_LIST_LIMIT });
 
-  const updated = list.map((p) => {
-    if (p.id !== id) return p;
-    updatedProduct = { ...p, stock: Math.max(0, p.stock + delta) };
-    return updatedProduct;
-  });
-
-  writeRaw(updated);
-  return updatedProduct;
-};
-
-export const resetToDefaults = () => {
-  const seeded = clone(seedProducts);
-  writeRaw(seeded);
-  return seeded;
-};
-
-export const getStats = () => {
-  const list = getAllProducts();
-
-  const totalProducts = list.length;
-  const totalStockUnits = list.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const outOfStock = list.filter((p) => p.stock <= 0);
-  const lowStock = list.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
-  const inventoryValue = list.reduce((sum, p) => sum + p.price * (p.stock || 0), 0);
+  const lowStockItems = products.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
+  const outOfStockItems = products.filter((p) => p.stock <= 0);
+  const inventoryValue = products.reduce((sum, p) => sum + p.price * (p.stock || 0), 0);
   const avgRating =
-    list.reduce((sum, p) => sum + (p.rating || 0), 0) / (list.length || 1);
+    products.reduce((sum, p) => sum + (p.rating || 0), 0) / (products.length || 1);
 
   return {
-    totalProducts,
-    totalStockUnits,
-    outOfStockCount: outOfStock.length,
-    lowStockCount: lowStock.length,
+    totalProducts: stats.totalProducts,
+    totalStockUnits: stats.totalStock,
+    outOfStockCount: stats.outOfStockCount,
+    lowStockCount: stats.lowStockCount,
     inventoryValue,
     avgRating: Number.isFinite(avgRating) ? avgRating : 0,
-    lowStockItems: lowStock,
-    outOfStockItems: outOfStock,
+    lowStockItems,
+    outOfStockItems,
   };
 };
 
-export const LOW_STOCK_LIMIT = LOW_STOCK_THRESHOLD;
+// Categories — re-exported here so admin screens have one import to reach for
+export const getCategories = () => categoriesApi.getCategories();
+export const addCategory = (data) => categoriesApi.createCategory(data);
+export const updateCategory = (id, data) => categoriesApi.updateCategory(id, data);
+export const deleteCategory = (id) => categoriesApi.deleteCategory(id);
