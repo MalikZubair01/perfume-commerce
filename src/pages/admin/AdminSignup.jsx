@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link,  } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from "lucide-react";
@@ -36,7 +36,7 @@ function AdminSignup() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   if (success) {
     return (
