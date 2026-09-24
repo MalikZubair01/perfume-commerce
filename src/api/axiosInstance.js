@@ -30,8 +30,9 @@ export const getStoredAdmin = () => {
   }
 };
 
+// set url
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL ,
+  baseURL: process.env.REACT_APP_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,7 +48,7 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // ---- Response interceptor: normalize errors, auto-logout on 401 ----
@@ -67,7 +68,7 @@ axiosInstance.interceptors.response.use(
     // Always reject with a plain Error carrying the backend's message,
     // so callers can just do `catch (err) { showToast(err.message) }`
     return Promise.reject(new Error(message));
-  }
+  },
 );
 
 export default axiosInstance;
