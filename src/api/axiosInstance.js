@@ -31,6 +31,7 @@ export const getStoredAdmin = () => {
 };
 
 // set url
+console.log("REACT_APP_API_BASE_URL is:", process.env.REACT_APP_API_BASE_URL)
 const axiosInstance = axios.create({
   baseURL: process.env.REACT_APP_API_BASE_URL,
   headers: {
