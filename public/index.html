@@ -13,39 +13,105 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
+
+    <!-- ===== Primary SEO ===== -->
+    <title>NK Perfume | Luxury Perfumes &amp; Attars in Pakistan</title>
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Shop NK Perfume for premium perfumes, attars and luxury fragrances. Handcrafted scents, secure online ordering and delivery across Pakistan."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <meta
+      name="keywords"
+      content="NK Perfume, nk perfume, luxury perfume Pakistan, buy perfume online Pakistan, attar, oud perfume, eau de parfum, fragrances"
+    />
+    <meta name="author" content="NK Perfume" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1"
+    />
+    <link rel="canonical" href="https://nk-perfume-blush.vercel.app/" />
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
+    <!-- ===== Google Search Console verification =====
+         1. Get your code from Search Console (HTML tag method)
+         2. Uncomment the line below and paste your code
+    <meta name="google-site-verification" content="PASTE_YOUR_CODE_HERE" />
     -->
-    <title>React App</title>
+
+    <!-- ===== Open Graph (WhatsApp, Facebook, LinkedIn previews) ===== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NK Perfume" />
+    <meta property="og:locale" content="en_PK" />
+    <meta
+      property="og:title"
+      content="NK Perfume | Luxury Perfumes & Attars in Pakistan"
+    />
+    <meta
+      property="og:description"
+      content="Premium perfumes, attars and luxury fragrances, delivered across Pakistan."
+    />
+    <meta property="og:url" content="https://nk-perfume-blush.vercel.app/" />
+    <!-- Replace with a 1200x630 brand image (put it in /public) for best previews -->
+    <meta
+      property="og:image"
+      content="https://nk-perfume-blush.vercel.app/logo192.png"
+    />
+    <meta property="og:image:alt" content="NK Perfume logo" />
+
+    <!-- ===== Twitter / X card ===== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="NK Perfume | Luxury Perfumes & Attars in Pakistan"
+    />
+    <meta
+      name="twitter:description"
+      content="Premium perfumes, attars and luxury fragrances, delivered across Pakistan."
+    />
+    <meta
+      name="twitter:image"
+      content="https://nk-perfume-blush.vercel.app/logo192.png"
+    />
+
+    <!-- ===== Structured data (helps Google understand the brand) ===== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://nk-perfume-blush.vercel.app/#organization",
+            "name": "NK Perfume",
+            "alternateName": "NK Fragrances",
+            "url": "https://nk-perfume-blush.vercel.app/",
+            "logo": "https://nk-perfume-blush.vercel.app/logo192.png",
+            "description": "Premium perfumes, attars and luxury fragrances sold online across Pakistan."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://nk-perfume-blush.vercel.app/#website",
+            "url": "https://nk-perfume-blush.vercel.app/",
+            "name": "NK Perfume",
+            "inLanguage": "en-PK",
+            "publisher": {
+              "@id": "https://nk-perfume-blush.vercel.app/#organization"
+            }
+          }
+        ]
+      }
+    </script>
+
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Shown only when JavaScript is disabled; also gives crawlers plain text -->
+    <noscript>
+      <h1>NK Perfume – Luxury Perfumes &amp; Attars</h1>
+      <p>
+        Shop premium perfumes, attars and luxury fragrances with delivery across
+        Pakistan. Please enable JavaScript to browse and order.
+      </p>
+    </noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>
